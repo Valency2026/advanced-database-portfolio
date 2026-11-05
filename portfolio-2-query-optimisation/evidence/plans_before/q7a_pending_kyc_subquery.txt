@@ -1,0 +1,65 @@
+-- q7a_pending_kyc_subquery
+-- median client time: 11070.38 ms over 5 runs
+-- rows returned: 1023
+
+SELECT c.customer_id, c.full_name, c.phone,
+       (SELECT sum(t.amount) FROM transfers t
+        JOIN accounts a ON a.account_id = t.source_account_id
+        WHERE a.customer_id = c.customer_id AND t.status = 'completed') AS total_sent
+FROM customers c
+WHERE c.kyc_tier = 1
+  AND (SELECT sum(t.amount) FROM transfers t
+       JOIN accounts a ON a.account_id = t.source_account_id
+       WHERE a.customer_id = c.customer_id AND t.status = 'completed') > 50000
+ORDER BY total_sent DESC;
+
+Sort  (cost=7670142.69..7670143.56 rows=349 width=69) (actual time=20828.784..20828.833 rows=1023 loops=1)
+  Sort Key: ((SubPlan 1)) DESC
+  Sort Method: quicksort  Memory: 96kB
+  Buffers: shared hit=2584228
+  ->  Seq Scan on customers c  (cost=0.00..7670127.95 rows=349 width=69) (actual time=233.016..20825.307 rows=1023 loops=1)
+        Filter: ((kyc_tier = 1) AND ((SubPlan 2) > '50000'::numeric))
+        Rows Removed by Filter: 1977
+        Buffers: shared hit=2584228
+        SubPlan 1
+          ->  Aggregate  (cost=2290.24..2290.25 rows=1 width=32) (actual time=9.993..9.993 rows=1 loops=1023)
+                Buffers: shared hit=1277727
+                ->  Hash Join  (cost=127.50..2290.19 rows=16 width=5) (actual time=1.022..9.972 rows=20 loops=1023)
+                      Hash Cond: (t.source_account_id = a.account_id)
+                      Buffers: shared hit=1277727
+                      ->  Seq Scan on transfers t  (cost=0.00..2008.56 rows=58649 width=13) (actual time=0.007..6.294 rows=58590 loops=1023)
+                            Filter: ((status)::text = 'completed'::text)
+                            Rows Removed by Filter: 8655
+                            Buffers: shared hit=1194864
+                      ->  Hash  (cost=127.49..127.49 rows=1 width=8) (actual time=0.131..0.131 rows=1 loops=1023)
+                            Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                            Buffers: shared hit=82863
+                            ->  Seq Scan on accounts a  (cost=0.00..127.49 rows=1 width=8) (actual time=0.072..0.128 rows=1 loops=1023)
+                                  Filter: (customer_id = c.customer_id)
+                                  Rows Removed by Filter: 3718
+                                  Buffers: shared hit=82863
+        SubPlan 2
+          ->  Aggregate  (cost=2290.24..2290.25 rows=1 width=32) (actual time=9.920..9.921 rows=1 loops=1046)
+                Buffers: shared hit=1306454
+                ->  Hash Join  (cost=127.50..2290.19 rows=16 width=5) (actual time=1.031..9.899 rows=20 loops=1046)
+                      Hash Cond: (t_1.source_account_id = a_1.account_id)
+                      Buffers: shared hit=1306454
+                      ->  Seq Scan on transfers t_1  (cost=0.00..2008.56 rows=58649 width=13) (actual time=0.007..6.318 rows=58590 loops=1046)
+                            Filter: ((status)::text = 'completed'::text)
+                            Rows Removed by Filter: 8655
+                            Buffers: shared hit=1221728
+                      ->  Hash  (cost=127.49..127.49 rows=1 width=8) (actual time=0.130..0.130 rows=1 loops=1046)
+                            Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                            Buffers: shared hit=84726
+                            ->  Seq Scan on accounts a_1  (cost=0.00..127.49 rows=1 width=8) (actual time=0.072..0.127 rows=1 loops=1046)
+                                  Filter: (customer_id = c.customer_id)
+                                  Rows Removed by Filter: 3718
+                                  Buffers: shared hit=84726
+Planning:
+  Buffers: shared hit=12
+Planning Time: 0.292 ms
+JIT:
+  Functions: 40
+  Options: Inlining true, Optimization true, Expressions true, Deforming true
+  Timing: Generation 1.641 ms, Inlining 11.297 ms, Optimization 120.433 ms, Emission 81.598 ms, Total 214.969 ms
+Execution Time: 20830.663 ms

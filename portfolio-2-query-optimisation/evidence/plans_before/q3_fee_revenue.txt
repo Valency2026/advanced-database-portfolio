@@ -1,0 +1,35 @@
+-- q3_fee_revenue
+-- median client time: 17.58 ms over 5 runs
+-- rows returned: 30
+
+SELECT date_trunc('day', created_at)::date AS day,
+       count(*)                            AS fee_count,
+       sum(amount)                         AS fee_revenue_ngn
+FROM transactions
+WHERE txn_type = 'fee'
+  AND created_at >= '2026-10-01' AND created_at < '2026-11-01'
+GROUP BY 1
+ORDER BY 1;
+
+Finalize GroupAggregate  (cost=6217.18..7086.38 rows=6421 width=44) (actual time=15.614..17.054 rows=30 loops=1)
+  Group Key: ((date_trunc('day'::text, created_at))::date)
+  Buffers: shared hit=3354
+  ->  Gather Merge  (cost=6217.18..6919.63 rows=5438 width=44) (actual time=15.579..17.012 rows=60 loops=1)
+        Workers Planned: 2
+        Workers Launched: 2
+        Buffers: shared hit=3354
+        ->  Partial GroupAggregate  (cost=5217.15..5291.93 rows=2719 width=44) (actual time=10.921..11.291 rows=20 loops=3)
+              Group Key: ((date_trunc('day'::text, created_at))::date)
+              Buffers: shared hit=3354
+              ->  Sort  (cost=5217.15..5223.95 rows=2719 width=9) (actual time=10.893..10.990 rows=2165 loops=3)
+                    Sort Key: ((date_trunc('day'::text, created_at))::date)
+                    Sort Method: quicksort  Memory: 229kB
+                    Buffers: shared hit=3354
+                    Worker 0:  Sort Method: quicksort  Memory: 118kB
+                    Worker 1:  Sort Method: quicksort  Memory: 101kB
+                    ->  Parallel Seq Scan on transactions  (cost=0.00..5062.05 rows=2719 width=9) (actual time=8.165..10.628 rows=2165 loops=3)
+                          Filter: ((created_at >= '2026-10-01 00:00:00-04'::timestamp with time zone) AND (created_at < '2026-11-01 00:00:00-04'::timestamp with time zone) AND ((txn_type)::text = 'fee'::text))
+                          Rows Removed by Filter: 78679
+                          Buffers: shared hit=3280
+Planning Time: 0.083 ms
+Execution Time: 17.082 ms

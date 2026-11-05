@@ -1,0 +1,61 @@
+-- q7a_pending_kyc_subquery
+-- median client time: 54.18 ms over 5 runs
+-- rows returned: 1023
+
+SELECT c.customer_id, c.full_name, c.phone,
+       (SELECT sum(t.amount) FROM transfers t
+        JOIN accounts a ON a.account_id = t.source_account_id
+        WHERE a.customer_id = c.customer_id AND t.status = 'completed') AS total_sent
+FROM customers c
+WHERE c.kyc_tier = 1
+  AND (SELECT sum(t.amount) FROM transfers t
+       JOIN accounts a ON a.account_id = t.source_account_id
+       WHERE a.customer_id = c.customer_id AND t.status = 'completed') > 50000
+ORDER BY total_sent DESC;
+
+Sort  (cost=239856.71..239857.58 rows=349 width=69) (actual time=57.980..58.026 rows=1023 loops=1)
+  Sort Key: ((SubPlan 1)) DESC
+  Sort Method: quicksort  Memory: 96kB
+  Buffers: shared hit=51775
+  ->  Seq Scan on customers c  (cost=0.00..239841.97 rows=349 width=69) (actual time=16.545..57.592 rows=1023 loops=1)
+        Filter: ((kyc_tier = 1) AND ((SubPlan 2) > '50000'::numeric))
+        Rows Removed by Filter: 1977
+        Buffers: shared hit=51775
+        SubPlan 1
+          ->  Aggregate  (cost=71.58..71.59 rows=1 width=32) (actual time=0.016..0.016 rows=1 loops=1023)
+                Buffers: shared hit=25699
+                ->  Nested Loop  (cost=4.74..71.54 rows=16 width=5) (actual time=0.004..0.014 rows=20 loops=1023)
+                      Buffers: shared hit=25699
+                      ->  Index Scan using idx_accounts_customer on accounts a  (cost=0.28..8.30 rows=1 width=8) (actual time=0.001..0.001 rows=1 loops=1023)
+                            Index Cond: (customer_id = c.customer_id)
+                            Buffers: shared hit=3072
+                      ->  Bitmap Heap Scan on transfers t  (cost=4.46..63.08 rows=16 width=13) (actual time=0.003..0.008 rows=16 loops=1275)
+                            Recheck Cond: ((a.account_id = source_account_id) AND ((status)::text = 'completed'::text))
+                            Heap Blocks: exact=20077
+                            Buffers: shared hit=22627
+                            ->  Bitmap Index Scan on idx_transfers_source_status  (cost=0.00..4.45 rows=16 width=0) (actual time=0.001..0.001 rows=16 loops=1275)
+                                  Index Cond: ((source_account_id = a.account_id) AND ((status)::text = 'completed'::text))
+                                  Buffers: shared hit=2550
+        SubPlan 2
+          ->  Aggregate  (cost=71.58..71.59 rows=1 width=32) (actual time=0.022..0.022 rows=1 loops=1046)
+                Buffers: shared hit=26029
+                ->  Nested Loop  (cost=4.74..71.54 rows=16 width=5) (actual time=0.005..0.020 rows=20 loops=1046)
+                      Buffers: shared hit=26029
+                      ->  Index Scan using idx_accounts_customer on accounts a_1  (cost=0.28..8.30 rows=1 width=8) (actual time=0.001..0.001 rows=1 loops=1046)
+                            Index Cond: (customer_id = c.customer_id)
+                            Buffers: shared hit=3141
+                      ->  Bitmap Heap Scan on transfers t_1  (cost=4.46..63.08 rows=16 width=13) (actual time=0.004..0.012 rows=16 loops=1298)
+                            Recheck Cond: ((a_1.account_id = source_account_id) AND ((status)::text = 'completed'::text))
+                            Heap Blocks: exact=20292
+                            Buffers: shared hit=22888
+                            ->  Bitmap Index Scan on idx_transfers_source_status  (cost=0.00..4.45 rows=16 width=0) (actual time=0.002..0.002 rows=16 loops=1298)
+                                  Index Cond: ((source_account_id = a_1.account_id) AND ((status)::text = 'completed'::text))
+                                  Buffers: shared hit=2596
+Planning:
+  Buffers: shared hit=24
+Planning Time: 0.359 ms
+JIT:
+  Functions: 28
+  Options: Inlining false, Optimization false, Expressions true, Deforming true
+  Timing: Generation 1.778 ms, Inlining 0.000 ms, Optimization 0.693 ms, Emission 15.748 ms, Total 18.219 ms
+Execution Time: 60.017 ms

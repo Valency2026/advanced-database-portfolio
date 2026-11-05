@@ -1,0 +1,66 @@
+-- q4_velocity_check
+-- median client time: 64.76 ms over 5 runs
+-- rows returned: 20
+
+WITH outgoing AS (
+    SELECT account_id, created_at,
+           count(*) OVER (PARTITION BY account_id
+                          ORDER BY created_at
+                          RANGE BETWEEN INTERVAL '10 minutes' PRECEDING AND CURRENT ROW) AS n_in_window
+    FROM transactions
+    WHERE txn_type = 'transfer_out'
+)
+SELECT o.account_id, a.account_number, c.full_name, c.kyc_tier,
+       max(o.n_in_window) AS max_transfers_in_10_min
+FROM outgoing o
+JOIN accounts  a ON a.account_id = o.account_id
+JOIN customers c ON c.customer_id = a.customer_id
+WHERE o.n_in_window >= 2
+GROUP BY o.account_id, a.account_number, c.full_name, c.kyc_tier
+ORDER BY max_transfers_in_10_min DESC, o.account_id
+LIMIT 20;
+
+Limit  (cost=14139.51..14139.56 rows=20 width=42) (actual time=77.203..77.211 rows=20 loops=1)
+  Buffers: shared hit=3408
+  ->  Sort  (cost=14139.51..14187.98 rows=19387 width=42) (actual time=77.200..77.206 rows=20 loops=1)
+        Sort Key: (max(o.n_in_window)) DESC, o.account_id
+        Sort Method: quicksort  Memory: 26kB
+        Buffers: shared hit=3408
+        ->  HashAggregate  (cost=13429.76..13623.63 rows=19387 width=42) (actual time=77.063..77.186 rows=23 loops=1)
+              Group Key: o.account_id, a.account_number, c.full_name, c.kyc_tier
+              Batches: 1  Memory Usage: 793kB
+              Buffers: shared hit=3408
+              ->  Hash Join  (cost=11194.82..13187.42 rows=19387 width=42) (actual time=35.063..76.970 rows=23 loops=1)
+                    Hash Cond: (a.customer_id = c.customer_id)
+                    Buffers: shared hit=3408
+                    ->  Hash Join  (cost=11080.32..13021.96 rows=19387 width=35) (actual time=34.366..76.241 rows=23 loops=1)
+                          Hash Cond: (o.account_id = a.account_id)
+                          Buffers: shared hit=3361
+                          ->  Subquery Scan on o  (cost=10915.64..12806.33 rows=19392 width=16) (actual time=33.587..75.414 rows=23 loops=1)
+                                Filter: (o.n_in_window >= 2)
+                                Rows Removed by Filter: 58567
+                                Buffers: shared hit=3280
+                                ->  WindowAgg  (cost=10915.64..12079.14 rows=58175 width=24) (actual time=32.951..72.180 rows=58590 loops=1)
+                                      Buffers: shared hit=3280
+                                      ->  Sort  (cost=10915.64..11061.08 rows=58175 width=16) (actual time=32.934..41.851 rows=58590 loops=1)
+                                            Sort Key: transactions.account_id, transactions.created_at
+                                            Sort Method: quicksort  Memory: 3825kB
+                                            Buffers: shared hit=3280
+                                            ->  Seq Scan on transactions  (cost=0.00..6311.64 rows=58175 width=16) (actual time=0.010..16.791 rows=58590 loops=1)
+                                                  Filter: ((txn_type)::text = 'transfer_out'::text)
+                                                  Rows Removed by Filter: 183941
+                                                  Buffers: shared hit=3280
+                          ->  Hash  (cost=118.19..118.19 rows=3719 width=27) (actual time=0.769..0.770 rows=3719 loops=1)
+                                Buckets: 4096  Batches: 1  Memory Usage: 265kB
+                                Buffers: shared hit=81
+                                ->  Seq Scan on accounts a  (cost=0.00..118.19 rows=3719 width=27) (actual time=0.021..0.325 rows=3719 loops=1)
+                                      Buffers: shared hit=81
+                    ->  Hash  (cost=77.00..77.00 rows=3000 width=23) (actual time=0.686..0.687 rows=3000 loops=1)
+                          Buckets: 4096  Batches: 1  Memory Usage: 205kB
+                          Buffers: shared hit=47
+                          ->  Seq Scan on customers c  (cost=0.00..77.00 rows=3000 width=23) (actual time=0.012..0.309 rows=3000 loops=1)
+                                Buffers: shared hit=47
+Planning:
+  Buffers: shared hit=15
+Planning Time: 0.321 ms
+Execution Time: 78.304 ms

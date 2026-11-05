@@ -1,0 +1,23 @@
+-- q1_statement
+-- median client time: 0.30 ms over 5 runs
+-- rows returned: 6
+
+SELECT created_at, txn_type, direction, amount, balance_after, description
+FROM transactions
+WHERE account_id = 1250
+  AND created_at >= '2026-06-01' AND created_at < '2026-07-01'
+ORDER BY created_at DESC;
+
+Sort  (cost=31.76..31.78 rows=7 width=46) (actual time=0.016..0.017 rows=6 loops=1)
+  Sort Key: created_at DESC
+  Sort Method: quicksort  Memory: 25kB
+  Buffers: shared hit=7
+  ->  Bitmap Heap Scan on transactions  (cost=4.51..31.66 rows=7 width=46) (actual time=0.009..0.012 rows=6 loops=1)
+        Recheck Cond: ((account_id = 1250) AND (created_at >= '2026-06-01 00:00:00-04'::timestamp with time zone) AND (created_at < '2026-07-01 00:00:00-04'::timestamp with time zone))
+        Heap Blocks: exact=4
+        Buffers: shared hit=7
+        ->  Bitmap Index Scan on idx_txn_account_created  (cost=0.00..4.51 rows=7 width=0) (actual time=0.006..0.006 rows=6 loops=1)
+              Index Cond: ((account_id = 1250) AND (created_at >= '2026-06-01 00:00:00-04'::timestamp with time zone) AND (created_at < '2026-07-01 00:00:00-04'::timestamp with time zone))
+              Buffers: shared hit=3
+Planning Time: 0.048 ms
+Execution Time: 0.030 ms

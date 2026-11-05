@@ -1,0 +1,50 @@
+-- q6_state_volume
+-- median client time: 12.45 ms over 5 runs
+-- rows returned: 5
+
+SELECT c.state_of_residence,
+       count(*)      AS transfers,
+       sum(t.amount) AS total_ngn
+FROM transfers t
+JOIN accounts  a ON a.account_id = t.source_account_id
+JOIN customers c ON c.customer_id = a.customer_id
+WHERE t.status = 'completed'
+  AND t.initiated_at >= '2026-07-01' AND t.initiated_at < '2026-10-01'
+GROUP BY c.state_of_residence
+ORDER BY total_ngn DESC
+LIMIT 5;
+
+Limit  (cost=2853.20..2853.21 rows=5 width=45) (actual time=24.577..24.582 rows=5 loops=1)
+  Buffers: shared hit=1296
+  ->  Sort  (cost=2853.20..2853.23 rows=12 width=45) (actual time=24.576..24.580 rows=5 loops=1)
+        Sort Key: (sum(t.amount)) DESC
+        Sort Method: top-N heapsort  Memory: 25kB
+        Buffers: shared hit=1296
+        ->  HashAggregate  (cost=2852.85..2853.00 rows=12 width=45) (actual time=24.561..24.569 rows=12 loops=1)
+              Group Key: c.state_of_residence
+              Batches: 1  Memory Usage: 24kB
+              Buffers: shared hit=1296
+              ->  Hash Join  (cost=279.18..2718.28 rows=17942 width=10) (actual time=2.215..19.504 rows=20155 loops=1)
+                    Hash Cond: (a.customer_id = c.customer_id)
+                    Buffers: shared hit=1296
+                    ->  Hash Join  (cost=164.68..2556.62 rows=17942 width=13) (actual time=1.401..14.753 rows=20155 loops=1)
+                          Hash Cond: (t.source_account_id = a.account_id)
+                          Buffers: shared hit=1249
+                          ->  Seq Scan on transfers t  (cost=0.00..2344.79 rows=17942 width=13) (actual time=0.479..9.436 rows=20155 loops=1)
+                                Filter: ((initiated_at >= '2026-07-01 00:00:00-04'::timestamp with time zone) AND (initiated_at < '2026-10-01 00:00:00-04'::timestamp with time zone) AND ((status)::text = 'completed'::text))
+                                Rows Removed by Filter: 47090
+                                Buffers: shared hit=1168
+                          ->  Hash  (cost=118.19..118.19 rows=3719 width=16) (actual time=0.913..0.914 rows=3719 loops=1)
+                                Buckets: 4096  Batches: 1  Memory Usage: 207kB
+                                Buffers: shared hit=81
+                                ->  Seq Scan on accounts a  (cost=0.00..118.19 rows=3719 width=16) (actual time=0.016..0.420 rows=3719 loops=1)
+                                      Buffers: shared hit=81
+                    ->  Hash  (cost=77.00..77.00 rows=3000 width=13) (actual time=0.809..0.810 rows=3000 loops=1)
+                          Buckets: 4096  Batches: 1  Memory Usage: 173kB
+                          Buffers: shared hit=47
+                          ->  Seq Scan on customers c  (cost=0.00..77.00 rows=3000 width=13) (actual time=0.005..0.372 rows=3000 loops=1)
+                                Buffers: shared hit=47
+Planning:
+  Buffers: shared hit=12
+Planning Time: 0.305 ms
+Execution Time: 24.624 ms

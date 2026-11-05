@@ -1,0 +1,46 @@
+-- q5_reconciliation
+-- median client time: 54.38 ms over 5 runs
+-- rows returned: 0
+
+SELECT a.account_id, a.balance,
+       coalesce(l.net, 0) AS ledger_balance,
+       a.balance - coalesce(l.net, 0) AS difference
+FROM accounts a
+LEFT JOIN (
+    SELECT account_id,
+           sum(CASE WHEN direction = 'CR' THEN amount ELSE -amount END) AS net
+    FROM transactions
+    GROUP BY account_id
+) l ON l.account_id = a.account_id
+WHERE a.balance <> coalesce(l.net, 0);
+
+Hash Left Join  (cost=7277.07..7414.33 rows=3718 width=80) (actual time=68.660..68.764 rows=0 loops=1)
+  Hash Cond: (a.account_id = l.account_id)
+  Filter: (a.balance <> COALESCE(l.net, '0'::numeric))
+  Rows Removed by Filter: 3719
+  Buffers: shared hit=3361
+  ->  Seq Scan on accounts a  (cost=0.00..118.19 rows=3719 width=16) (actual time=0.022..0.283 rows=3719 loops=1)
+        Buffers: shared hit=81
+  ->  Hash  (cost=7230.60..7230.60 rows=3718 width=40) (actual time=67.273..67.374 rows=3719 loops=1)
+        Buckets: 4096  Batches: 1  Memory Usage: 235kB
+        Buffers: shared hit=3280
+        ->  Subquery Scan on l  (cost=7146.94..7230.60 rows=3718 width=40) (actual time=65.151..66.914 rows=3719 loops=1)
+              Buffers: shared hit=3280
+              ->  Finalize HashAggregate  (cost=7146.94..7193.42 rows=3718 width=40) (actual time=65.149..66.573 rows=3719 loops=1)
+                    Group Key: transactions.account_id
+                    Batches: 1  Memory Usage: 2257kB
+                    Buffers: shared hit=3280
+                    ->  Gather  (cost=6301.10..7091.17 rows=7436 width=40) (actual time=56.655..59.372 rows=11147 loops=1)
+                          Workers Planned: 2
+                          Workers Launched: 2
+                          Buffers: shared hit=3280
+                          ->  Partial HashAggregate  (cost=5301.10..5347.57 rows=3718 width=40) (actual time=38.931..40.359 rows=3716 loops=3)
+                                Group Key: transactions.account_id
+                                Batches: 1  Memory Usage: 1745kB
+                                Buffers: shared hit=3280
+                                Worker 0:  Batches: 1  Memory Usage: 1745kB
+                                Worker 1:  Batches: 1  Memory Usage: 1745kB
+                                ->  Parallel Seq Scan on transactions  (cost=0.00..4290.55 rows=101055 width=16) (actual time=0.006..6.736 rows=80844 loops=3)
+                                      Buffers: shared hit=3280
+Planning Time: 0.184 ms
+Execution Time: 68.829 ms

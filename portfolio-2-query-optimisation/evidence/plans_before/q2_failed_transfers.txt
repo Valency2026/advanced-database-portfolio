@@ -1,0 +1,37 @@
+-- q2_failed_transfers
+-- median client time: 6.44 ms over 5 runs
+-- rows returned: 22
+
+SELECT t.reference, c.full_name, c.phone, t.amount, t.failure_reason, t.initiated_at
+FROM transfers t
+JOIN accounts  a ON a.account_id = t.source_account_id
+JOIN customers c ON c.customer_id = a.customer_id
+WHERE t.status = 'failed'
+  AND t.initiated_at >= '2026-10-24'
+ORDER BY t.initiated_at DESC;
+
+Sort  (cost=2416.61..2417.08 rows=188 width=82) (actual time=8.592..8.595 rows=22 loops=1)
+  Sort Key: t.initiated_at DESC
+  Sort Method: quicksort  Memory: 27kB
+  Buffers: shared hit=1315
+  ->  Nested Loop  (cost=164.96..2409.50 rows=188 width=82) (actual time=8.338..8.579 rows=22 loops=1)
+        Buffers: shared hit=1315
+        ->  Hash Join  (cost=164.68..2341.85 rows=188 width=61) (actual time=8.323..8.525 rows=22 loops=1)
+              Hash Cond: (t.source_account_id = a.account_id)
+              Buffers: shared hit=1249
+              ->  Seq Scan on transfers t  (cost=0.00..2176.68 rows=188 width=61) (actual time=7.357..7.551 rows=22 loops=1)
+                    Filter: ((initiated_at >= '2026-10-24 00:00:00-04'::timestamp with time zone) AND ((status)::text = 'failed'::text))
+                    Rows Removed by Filter: 67223
+                    Buffers: shared hit=1168
+              ->  Hash  (cost=118.19..118.19 rows=3719 width=16) (actual time=0.955..0.956 rows=3719 loops=1)
+                    Buckets: 4096  Batches: 1  Memory Usage: 207kB
+                    Buffers: shared hit=81
+                    ->  Seq Scan on accounts a  (cost=0.00..118.19 rows=3719 width=16) (actual time=0.018..0.430 rows=3719 loops=1)
+                          Buffers: shared hit=81
+        ->  Index Scan using customers_pkey on customers c  (cost=0.28..0.36 rows=1 width=37) (actual time=0.002..0.002 rows=1 loops=22)
+              Index Cond: (customer_id = a.customer_id)
+              Buffers: shared hit=66
+Planning:
+  Buffers: shared hit=12
+Planning Time: 0.218 ms
+Execution Time: 8.621 ms

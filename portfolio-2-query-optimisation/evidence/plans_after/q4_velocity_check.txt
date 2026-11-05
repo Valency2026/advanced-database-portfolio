@@ -1,0 +1,61 @@
+-- q4_velocity_check
+-- median client time: 41.26 ms over 5 runs
+-- rows returned: 20
+
+WITH outgoing AS (
+    SELECT account_id, created_at,
+           count(*) OVER (PARTITION BY account_id
+                          ORDER BY created_at
+                          RANGE BETWEEN INTERVAL '10 minutes' PRECEDING AND CURRENT ROW) AS n_in_window
+    FROM transactions
+    WHERE txn_type = 'transfer_out'
+)
+SELECT o.account_id, a.account_number, c.full_name, c.kyc_tier,
+       max(o.n_in_window) AS max_transfers_in_10_min
+FROM outgoing o
+JOIN accounts  a ON a.account_id = o.account_id
+JOIN customers c ON c.customer_id = a.customer_id
+WHERE o.n_in_window >= 2
+GROUP BY o.account_id, a.account_number, c.full_name, c.kyc_tier
+ORDER BY max_transfers_in_10_min DESC, o.account_id
+LIMIT 20;
+
+Limit  (cost=5052.29..5052.34 rows=20 width=42) (actual time=32.723..32.730 rows=20 loops=1)
+  Buffers: shared hit=356
+  ->  Sort  (cost=5052.29..5101.78 rows=19796 width=42) (actual time=32.721..32.726 rows=20 loops=1)
+        Sort Key: (max(o.n_in_window)) DESC, o.account_id
+        Sort Method: quicksort  Memory: 26kB
+        Buffers: shared hit=356
+        ->  HashAggregate  (cost=4327.56..4525.52 rows=19796 width=42) (actual time=32.608..32.711 rows=23 loops=1)
+              Group Key: o.account_id, a.account_number, c.full_name, c.kyc_tier
+              Batches: 1  Memory Usage: 793kB
+              Buffers: shared hit=356
+              ->  Hash Join  (cost=279.59..4080.11 rows=19796 width=42) (actual time=2.097..32.572 rows=23 loops=1)
+                    Hash Cond: (a.customer_id = c.customer_id)
+                    Buffers: shared hit=356
+                    ->  Hash Join  (cost=165.09..3913.57 rows=19796 width=35) (actual time=1.423..31.880 rows=23 loops=1)
+                          Hash Cond: (o.account_id = a.account_id)
+                          Buffers: shared hit=309
+                          ->  Subquery Scan on o  (cost=0.41..3696.87 rows=19796 width=16) (actual time=0.660..31.091 rows=23 loops=1)
+                                Filter: (o.n_in_window >= 2)
+                                Rows Removed by Filter: 58567
+                                Buffers: shared hit=228
+                                ->  WindowAgg  (cost=0.41..2954.52 rows=59388 width=24) (actual time=0.020..28.232 rows=58590 loops=1)
+                                      Buffers: shared hit=228
+                                      ->  Index Only Scan using idx_txn_transfer_out on transactions  (cost=0.41..1915.23 rows=59388 width=16) (actual time=0.012..4.794 rows=58590 loops=1)
+                                            Heap Fetches: 0
+                                            Buffers: shared hit=228
+                          ->  Hash  (cost=118.19..118.19 rows=3719 width=27) (actual time=0.755..0.756 rows=3719 loops=1)
+                                Buckets: 4096  Batches: 1  Memory Usage: 265kB
+                                Buffers: shared hit=81
+                                ->  Seq Scan on accounts a  (cost=0.00..118.19 rows=3719 width=27) (actual time=0.022..0.312 rows=3719 loops=1)
+                                      Buffers: shared hit=81
+                    ->  Hash  (cost=77.00..77.00 rows=3000 width=23) (actual time=0.668..0.669 rows=3000 loops=1)
+                          Buckets: 4096  Batches: 1  Memory Usage: 205kB
+                          Buffers: shared hit=47
+                          ->  Seq Scan on customers c  (cost=0.00..77.00 rows=3000 width=23) (actual time=0.006..0.319 rows=3000 loops=1)
+                                Buffers: shared hit=47
+Planning:
+  Buffers: shared hit=21
+Planning Time: 0.389 ms
+Execution Time: 32.883 ms

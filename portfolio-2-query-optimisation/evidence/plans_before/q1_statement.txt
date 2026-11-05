@@ -1,0 +1,26 @@
+-- q1_statement
+-- median client time: 15.80 ms over 5 runs
+-- rows returned: 6
+
+SELECT created_at, txn_type, direction, amount, balance_after, description
+FROM transactions
+WHERE account_id = 1250
+  AND created_at >= '2026-06-01' AND created_at < '2026-07-01'
+ORDER BY created_at DESC;
+
+Gather Merge  (cost=6048.50..6049.20 rows=6 width=46) (actual time=15.537..17.828 rows=6 loops=1)
+  Workers Planned: 2
+  Workers Launched: 2
+  Buffers: shared hit=3354
+  ->  Sort  (cost=5048.48..5048.49 rows=3 width=46) (actual time=11.607..11.615 rows=2 loops=3)
+        Sort Key: created_at DESC
+        Sort Method: quicksort  Memory: 25kB
+        Buffers: shared hit=3354
+        Worker 0:  Sort Method: quicksort  Memory: 25kB
+        Worker 1:  Sort Method: quicksort  Memory: 25kB
+        ->  Parallel Seq Scan on transactions  (cost=0.00..5048.46 rows=3 width=46) (actual time=7.153..11.564 rows=2 loops=3)
+              Filter: ((created_at >= '2026-06-01 00:00:00-04'::timestamp with time zone) AND (created_at < '2026-07-01 00:00:00-04'::timestamp with time zone) AND (account_id = 1250))
+              Rows Removed by Filter: 80842
+              Buffers: shared hit=3280
+Planning Time: 0.063 ms
+Execution Time: 17.848 ms

@@ -1,0 +1,6 @@
+(datetime.datetime(2026, 6, 26, 7, 51, 5, 96694, tzinfo=datetime.timezone(datetime.timedelta(days=-1, seconds=72000))), 'deposit', 'CR', Decimal('10000.00'), Decimal('344923.12'), 'Wallet funding')
+(datetime.datetime(2026, 6, 23, 17, 27, 32, 775846, tzinfo=datetime.timezone(datetime.timedelta(days=-1, seconds=72000))), 'transfer_out', 'DR', Decimal('1500.00'), Decimal('334950.00'), 'Data subscription')
+(datetime.datetime(2026, 6, 23, 17, 27, 32, 775846, tzinfo=datetime.timezone(datetime.timedelta(days=-1, seconds=72000))), 'fee', 'DR', Decimal('26.88'), Decimal('334923.12'), 'NIP transfer fee')
+(datetime.datetime(2026, 6, 20, 1, 47, 6, 759505, tzinfo=datetime.timezone(datetime.timedelta(days=-1, seconds=72000))), 'transfer_out', 'DR', Decimal('15000.00'), Decimal('336460.00'), 'POS withdrawal')
+(datetime.datetime(2026, 6, 20, 1, 47, 6, 759505, tzinfo=datetime.timezone(datetime.timedelta(days=-1, seconds=72000))), 'fee', 'DR', Decimal('10.00'), Decimal('336450.00'), 'Transfer fee')
+(datetime.datetime(2026, 6, 18, 13, 39, 56, 723185, tzinfo=datetime.timezone(datetime.timedelta(days=-1, seconds=72000))), 'transfer_in', 'CR', Decimal('15000.00'), Decimal('351460.00'), 'Transport')

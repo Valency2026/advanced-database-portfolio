@@ -1,0 +1,45 @@
+before  q1_statement                     15.80 ms  rows=6
+before  q2_failed_transfers               6.44 ms  rows=22
+before  q3_fee_revenue                   17.58 ms  rows=30
+before  q4_velocity_check                64.76 ms  rows=20
+before  q5_reconciliation                57.40 ms  rows=0
+before  q6_state_volume                  12.45 ms  rows=5
+before  q7a_pending_kyc_subquery      11070.38 ms  rows=1023
+before  q7b_pending_kyc_join             20.46 ms  rows=1023
+after   q1_statement                      0.30 ms  rows=6
+after   q2_failed_transfers               1.36 ms  rows=22
+after   q3_fee_revenue                    4.15 ms  rows=30
+after   q4_velocity_check                41.26 ms  rows=20
+after   q5_reconciliation                54.38 ms  rows=0
+after   q6_state_volume                  11.22 ms  rows=5
+after   q7a_pending_kyc_subquery         54.18 ms  rows=1023
+after   q7b_pending_kyc_join             21.40 ms  rows=1023
+# Timing comparison: before vs after indexing
+
+Median of 5 runs each, measured from the client (PostgreSQL 16, local socket).
+Planner execution time is taken from EXPLAIN ANALYZE.
+
+| Query | Rows | Before (ms) | After (ms) | Speed-up | Scan type before | Scan type after |
+|---|---|---|---|---|---|---|
+| q1_statement | 6 | 15.80 | 0.30 | 52.0x | Parallel Seq Scan | Bitmap Heap Scan, Index Scan |
+| q2_failed_transfers | 22 | 6.44 | 1.36 | 4.7x | Index Scan, Seq Scan | Index Scan, Seq Scan |
+| q3_fee_revenue | 30 | 17.58 | 4.15 | 4.2x | Parallel Seq Scan | Index Only Scan |
+| q4_velocity_check | 20 | 64.76 | 41.26 | 1.6x | Seq Scan | Index Only Scan, Seq Scan |
+| q5_reconciliation | 0 | 57.40 | 54.38 | 1.1x | Parallel Seq Scan, Seq Scan | Parallel Seq Scan, Seq Scan |
+| q6_state_volume | 5 | 12.45 | 11.22 | 1.1x | Seq Scan | Index Scan, Seq Scan |
+| q7a_pending_kyc_subquery | 1023 | 11070.38 | 54.18 | 204.3x | Seq Scan | Bitmap Heap Scan, Index Scan, Seq Scan |
+| q7b_pending_kyc_join | 1023 | 20.46 | 21.40 | 1.0x | Seq Scan | Seq Scan |
+
+## Index sizes
+
+| Index | Size |
+|---|---|
+| idx_accounts_customer | 96 kB |
+| idx_transfers_completed_initiated | 1304 kB |
+| idx_transfers_failed_recent | 208 kB |
+| idx_transfers_source_status | 712 kB |
+| idx_txn_account_created | 6720 kB |
+| idx_txn_fee_created | 1816 kB |
+| idx_txn_transfer_out | 1832 kB |
+
+Total size of the transactions table including indexes: 41 MB

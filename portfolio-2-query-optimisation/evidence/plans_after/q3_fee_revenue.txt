@@ -1,0 +1,26 @@
+-- q3_fee_revenue
+-- median client time: 4.15 ms over 5 runs
+-- rows returned: 30
+
+SELECT date_trunc('day', created_at)::date AS day,
+       count(*)                            AS fee_count,
+       sum(amount)                         AS fee_revenue_ngn
+FROM transactions
+WHERE txn_type = 'fee'
+  AND created_at >= '2026-10-01' AND created_at < '2026-11-01'
+GROUP BY 1
+ORDER BY 1;
+
+GroupAggregate  (cost=665.98..839.42 rows=6271 width=44) (actual time=3.400..4.837 rows=30 loops=1)
+  Group Key: ((date_trunc('day'::text, created_at))::date)
+  Buffers: shared hit=28
+  ->  Sort  (cost=665.98..681.91 rows=6369 width=9) (actual time=3.347..3.741 rows=6495 loops=1)
+        Sort Key: ((date_trunc('day'::text, created_at))::date)
+        Sort Method: quicksort  Memory: 446kB
+        Buffers: shared hit=28
+        ->  Index Only Scan using idx_txn_fee_created on transactions  (cost=0.29..263.56 rows=6369 width=9) (actual time=0.060..2.580 rows=6495 loops=1)
+              Index Cond: ((created_at >= '2026-10-01 00:00:00-04'::timestamp with time zone) AND (created_at < '2026-11-01 00:00:00-04'::timestamp with time zone))
+              Heap Fetches: 0
+              Buffers: shared hit=28
+Planning Time: 0.105 ms
+Execution Time: 4.861 ms

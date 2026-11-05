@@ -1,0 +1,49 @@
+-- q7b_pending_kyc_join
+-- median client time: 20.46 ms over 5 runs
+-- rows returned: 1023
+
+SELECT c.customer_id, c.full_name, c.phone, sum(t.amount) AS total_sent
+FROM customers c
+JOIN accounts  a ON a.customer_id = c.customer_id
+JOIN transfers t ON t.source_account_id = a.account_id AND t.status = 'completed'
+WHERE c.kyc_tier = 1
+GROUP BY c.customer_id, c.full_name, c.phone
+HAVING sum(t.amount) > 50000
+ORDER BY total_sent DESC;
+
+Sort  (cost=2711.82..2712.70 rows=349 width=69) (actual time=31.225..31.276 rows=1023 loops=1)
+  Sort Key: (sum(t.amount)) DESC
+  Sort Method: quicksort  Memory: 96kB
+  Buffers: shared hit=1296
+  ->  HashAggregate  (cost=2681.39..2697.08 rows=349 width=69) (actual time=30.588..30.841 rows=1023 loops=1)
+        Group Key: c.customer_id
+        Filter: (sum(t.amount) > '50000'::numeric)
+        Batches: 1  Memory Usage: 577kB
+        Rows Removed by Filter: 23
+        Buffers: shared hit=1296
+        ->  Hash Join  (cost=262.25..2579.12 rows=20454 width=42) (actual time=1.053..25.843 rows=20456 loops=1)
+              Hash Cond: (a.customer_id = c.customer_id)
+              Buffers: shared hit=1296
+              ->  Hash Join  (cost=164.68..2327.37 rows=58649 width=13) (actual time=0.620..18.671 rows=58590 loops=1)
+                    Hash Cond: (t.source_account_id = a.account_id)
+                    Buffers: shared hit=1249
+                    ->  Seq Scan on transfers t  (cost=0.00..2008.56 rows=58649 width=13) (actual time=0.011..8.910 rows=58590 loops=1)
+                          Filter: ((status)::text = 'completed'::text)
+                          Rows Removed by Filter: 8655
+                          Buffers: shared hit=1168
+                    ->  Hash  (cost=118.19..118.19 rows=3719 width=16) (actual time=0.603..0.609 rows=3719 loops=1)
+                          Buckets: 4096  Batches: 1  Memory Usage: 207kB
+                          Buffers: shared hit=81
+                          ->  Seq Scan on accounts a  (cost=0.00..118.19 rows=3719 width=16) (actual time=0.013..0.272 rows=3719 loops=1)
+                                Buffers: shared hit=81
+              ->  Hash  (cost=84.50..84.50 rows=1046 width=37) (actual time=0.429..0.430 rows=1046 loops=1)
+                    Buckets: 2048  Batches: 1  Memory Usage: 88kB
+                    Buffers: shared hit=47
+                    ->  Seq Scan on customers c  (cost=0.00..84.50 rows=1046 width=37) (actual time=0.005..0.243 rows=1046 loops=1)
+                          Filter: (kyc_tier = 1)
+                          Rows Removed by Filter: 1954
+                          Buffers: shared hit=47
+Planning:
+  Buffers: shared hit=15
+Planning Time: 0.256 ms
+Execution Time: 31.357 ms
