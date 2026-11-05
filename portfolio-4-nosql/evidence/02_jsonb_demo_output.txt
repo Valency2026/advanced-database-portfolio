@@ -1,0 +1,141 @@
+SET
+Timing is on.
+psql:Fakiyesi_Vincent_JSONB.sql:12: NOTICE:  table "customer_documents" does not exist, skipping
+DROP TABLE
+Time: 0.398 ms
+CREATE TABLE
+Time: 5.004 ms
+INSERT 0 3000
+Time: 101.654 ms
+ documents |  size   
+-----------+---------
+      3000 | 2144 kB
+(1 row)
+
+Time: 1.403 ms
+
+--- 2. One document read = whole home screen
+                     jsonb_pretty                     
+------------------------------------------------------
+ {                                                   +
+     "kyc": {                                        +
+         "tier": 3,                                  +
+         "status": "active",                         +
+         "documents": [                              +
+             {                                       +
+                 "type": "bvn",                      +
+                 "status": "approved",               +
+                 "numberMasked": "****7404"          +
+             },                                      +
+             {                                       +
+                 "type": "nin",                      +
+                 "status": "approved",               +
+                 "numberMasked": "****3444"          +
+             },                                      +
+             {                                       +
+                 "type": "utility_bill",             +
+                 "status": "approved",               +
+                 "numberMasked": "****8689"          +
+             }                                       +
+         ]                                           +
+     },                                              +
+     "email": "hauwa.abubakar1250@example.com",      +
+     "phone": "070267850521250",                     +
+     "state": "Oyo",                                 +
+     "accounts": [                                   +
+         {                                           +
+             "type": "wallet",                       +
+             "status": "open",                       +
+             "balance": 582329.36,                   +
+             "accountNumber": "2010001532"           +
+         }                                           +
+     ],                                              +
+     "fullName": "Hauwa Abubakar",                   +
+     "createdAt": "2024-09-26T16:31:24.210132-04:00",+
+     "beneficiaries": [                              +
+         {                                           +
+             "alias": "Damilola",                    +
+             "bankCode": "214",                      +
+             "bankName": "FCMB",                     +
+             "accountNumber": "2626937523"           +
+         }                                           +
+     ]                                               +
+ }
+(1 row)
+
+Time: 0.457 ms
+
+--- 3. Query inside the embedded array: who owns wallet 2010001537? (no index yet)
+                                                   QUERY PLAN                                                    
+-----------------------------------------------------------------------------------------------------------------
+ Seq Scan on customer_documents  (cost=0.00..633.26 rows=304 width=40) (actual time=0.782..1.860 rows=1 loops=1)
+   Filter: (doc @> '{"accounts": [{"accountNumber": "2010001537"}]}'::jsonb)
+   Rows Removed by Filter: 2999
+   Buffers: shared hit=253
+ Planning Time: 0.080 ms
+ Execution Time: 1.873 ms
+(6 rows)
+
+Time: 2.427 ms
+
+--- 4. Add a GIN index on the whole document, re-run
+CREATE INDEX
+Time: 54.876 ms
+ANALYZE
+Time: 25.363 ms
+                                                             QUERY PLAN                                                             
+------------------------------------------------------------------------------------------------------------------------------------
+ Bitmap Heap Scan on customer_documents  (cost=12.83..16.84 rows=1 width=40) (actual time=0.025..0.026 rows=1 loops=1)
+   Recheck Cond: (doc @> '{"accounts": [{"accountNumber": "2010001537"}]}'::jsonb)
+   Heap Blocks: exact=1
+   Buffers: shared hit=4
+   ->  Bitmap Index Scan on idx_customer_documents_gin  (cost=0.00..12.83 rows=1 width=0) (actual time=0.014..0.014 rows=1 loops=1)
+         Index Cond: (doc @> '{"accounts": [{"accountNumber": "2010001537"}]}'::jsonb)
+         Buffers: shared hit=3
+ Planning:
+   Buffers: shared hit=32
+ Planning Time: 0.343 ms
+ Execution Time: 0.069 ms
+(11 rows)
+
+Time: 0.784 ms
+
+--- 5. Containment query on nested field: tier-1 customers in Enugu
+ count 
+-------
+    78
+(1 row)
+
+Time: 0.611 ms
+
+--- 6. Update inside the document: push a beneficiary (atomic, like $push)
+UPDATE 1
+Time: 1.128 ms
+ beneficiaries |                                             last_added                                             
+---------------+----------------------------------------------------------------------------------------------------
+             2 | {"alias": "Landlord", "bankCode": "044", "bankName": "Access Bank", "accountNumber": "0987654321"}
+(1 row)
+
+Time: 0.281 ms
+
+--- 7. Aggregate over embedded arrays (like $unwind + $group): balance per state
+  state  | wallets | total_balance 
+---------+---------+---------------
+ Delta   |     305 |   98324397.76
+ FCT     |     338 |   97925769.20
+ Oyo     |     318 |   97902479.52
+ Anambra |     341 |   97212992.88
+ Lagos   |     321 |   96845928.24
+(5 rows)
+
+Time: 6.744 ms
+
+--- 8. Schema flexibility: a field that only some documents have
+UPDATE 1
+Time: 0.839 ms
+ customer_id |   ?column?   
+-------------+--------------
+        1250 | NV-CHIOMA-22
+(1 row)
+
+Time: 0.912 ms
