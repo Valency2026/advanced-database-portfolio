@@ -6,7 +6,7 @@ Email        : v.fakiyesi0101@miva.edu.ng
 Programme    : M.Sc. Information Technology, Miva Open University
 Assessment   : 2026/2027 First Semester Continuous Assessment (40 marks)
 Case study   : NairaVault - a simulated Nigerian digital wallet / fintech platform
-GitHub       : https://github.com/<your-username>/advanced-database-portfolio
+GitHub       : https://github.com/Valency2026/advanced-database-portfolio
                (private repository; assessor access granted as instructed)
 
 FOLDER CONTENTS
@@ -48,4 +48,6 @@ WHERE TO START
 
 ACADEMIC INTEGRITY
 ------------------
-Individual work.
+Individual work. An AI tool was used as a learning aid, as permitted by the brief; the
+declaration is in final-documentation/Fakiyesi_Vincent_AIUseDeclaration.md. Sources are listed in
+final-documentation/Fakiyesi_Vincent_References.md.

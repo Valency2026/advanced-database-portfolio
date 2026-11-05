@@ -83,7 +83,7 @@ const doc = new Document({
 
       h1("5. References and AI-use declaration"),
       p("Full references are in final-documentation/Fakiyesi_Vincent_References.md (Elmasri & Navathe 2017; Silberschatz, Korth & Sudarshan 2019; Kleppmann 2017; PostgreSQL 16 and MongoDB documentation; CBN mobile-money framework; NDPA 2023; AWS RDS documentation)."),
-      p("AI use: Claude (Anthropic) was used to draft scripts, documentation and explanations from my case-study decisions, to run the scripts in a sandbox so that the evidence is genuine output, and to help debug failures. I reviewed every analysis against the evidence files, corrected and re-ran scripts where needed, and can explain the design decisions in my own words. The full declaration is in final-documentation/Fakiyesi_Vincent_AIUseDeclaration.md. I take full responsibility for the accuracy and originality of this submission."),
+      p("AI use: Claude (Anthropic) was used as a learning and productivity aid, as permitted by the brief. I chose the case study, made the design decisions set out above and reviewed every result against the evidence files; Claude drafted scripts and documentation to those decisions, ran them in a sandbox so that the evidence is genuine output, and helped debug failures. The full declaration is in final-documentation/Fakiyesi_Vincent_AIUseDeclaration.md. I take full responsibility for the accuracy and originality of this submission and can explain the work in my own words."),
     ] }] });
 
 Packer.toBuffer(doc).then(b => { fs.writeFileSync("Fakiyesi_Vincent_PortfolioSummary.docx", b); console.log("written"); });

@@ -29,15 +29,10 @@ For each upload: open the repository → **Add file** → **Upload files** → d
 folder from your computer onto the page (folders upload with their structure) → type the
 commit message → **Commit changes**.
 
-## 3. Put the real link into the documents
+## 3. The repository link
 
-Once the repository exists, its address will look like
-`https://github.com/YOUR-USERNAME/advanced-database-portfolio`. Replace the placeholder
-`https://github.com/<your-username>/advanced-database-portfolio` in:
-
-- `README.md` (top of the repository)
-- `Fakiyesi_Vincent_README.txt`
-- `final-documentation/Fakiyesi_Vincent_PortfolioSummary.docx` (header line; re-export the PDF after editing, or ask me to rebuild it with the link)
+The repository is `https://github.com/Valency2026/advanced-database-portfolio`. This link
+is already in `README.md`, `Fakiyesi_Vincent_README.txt` and the summary document.
 
 ## 4. Give the assessor access
 

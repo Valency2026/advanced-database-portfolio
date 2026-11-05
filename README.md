@@ -3,6 +3,7 @@
 **Student:** Fakiyesi Vincent · **Student ID:** 2026/A/MIT/0304 · **Email:** v.fakiyesi0101@miva.edu.ng  
 **Programme:** M.Sc. Information Technology, Miva Open University  
 **Course:** MIT 8103 Advanced Database Systems — 2026/2027 First Semester Continuous Assessment  
+**GitHub:** https://github.com/Valency2026/advanced-database-portfolio (private)  
 **Case study:** NairaVault, a simulated Nigerian digital wallet / fintech platform (used consistently in all five portfolios)
 
 ## What this repository contains
@@ -55,6 +56,6 @@ Python dependencies: `pip install psycopg2-binary pymongo mongomock`
 
 ## Academic integrity
 
-This is individual work.
-`final-documentation/Fakiyesi_Vincent_AIUseDeclaration.md`. All external sources are
+This is individual work. An AI tool was used as a learning aid, as permitted by the brief,
+and is declared in `final-documentation/Fakiyesi_Vincent_AIUseDeclaration.md`. All external sources are
 listed in `final-documentation/Fakiyesi_Vincent_References.md`.
