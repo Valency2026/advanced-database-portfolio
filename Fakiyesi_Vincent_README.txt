@@ -48,6 +48,4 @@ WHERE TO START
 
 ACADEMIC INTEGRITY
 ------------------
-Individual work. AI assistance (Claude, Anthropic) was used and is declared in
-final-documentation/Fakiyesi_Vincent_AIUseDeclaration.md. Sources are listed in
-final-documentation/Fakiyesi_Vincent_References.md.
+Individual work.
