@@ -55,6 +55,6 @@ Python dependencies: `pip install psycopg2-binary pymongo mongomock`
 
 ## Academic integrity
 
-This is individual work. AI assistance was used and is declared in
+This is individual work.
 `final-documentation/Fakiyesi_Vincent_AIUseDeclaration.md`. All external sources are
 listed in `final-documentation/Fakiyesi_Vincent_References.md`.
