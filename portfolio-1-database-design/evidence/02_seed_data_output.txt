@@ -1,0 +1,9 @@
+banks                  20 rows
+staff                   5 rows
+customers           3,000 rows
+accounts            3,719 rows
+transfers          67,245 rows
+transactions      242,531 rows
+beneficiaries       3,319 rows
+kyc_documents       3,496 rows
+audit_log           3,166 rows

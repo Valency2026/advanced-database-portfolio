@@ -1,0 +1,47 @@
+SET
+--- 1. Balance can never go negative
+psql:Fakiyesi_Vincent_ConstraintTests.sql:10: ERROR:  new row for relation "accounts" violates check constraint "chk_balance_non_negative"
+DETAIL:  Failing row contains (1, 1, 2010000001, wallet, NGN, -50.00, open, 2024-12-22 15:19:40.61982-05).
+--- 2. Customer must be 18 or older
+psql:Fakiyesi_Vincent_ConstraintTests.sql:14: ERROR:  new row for relation "customers" violates check constraint "chk_customer_adult"
+DETAIL:  Failing row contains (3001, Too Young, 08199999999, null, 2011-11-04, null, 1, active, 2026-11-04 01:15:13.368116-05).
+--- 3. Duplicate phone number rejected (UNIQUE)
+psql:Fakiyesi_Vincent_ConstraintTests.sql:18: ERROR:  duplicate key value violates unique constraint "customers_phone_key"
+DETAIL:  Key (phone)=(080914111130001) already exists.
+--- 4. Account must belong to an existing customer (FOREIGN KEY)
+psql:Fakiyesi_Vincent_ConstraintTests.sql:21: ERROR:  insert or update on table "accounts" violates foreign key constraint "accounts_customer_id_fkey"
+DETAIL:  Key (customer_id)=(999999) is not present in table "customers".
+--- 5. Account number must be exactly 10 digits
+psql:Fakiyesi_Vincent_ConstraintTests.sql:24: ERROR:  new row for relation "accounts" violates check constraint "chk_account_number_digits"
+DETAIL:  Failing row contains (3721, 1, ABC123    , wallet, NGN, 0.00, open, 2026-11-04 01:15:13.371038-05).
+--- 6. Transfer must be internal OR external, not both
+psql:Fakiyesi_Vincent_ConstraintTests.sql:29: ERROR:  new row for relation "transfers" violates check constraint "chk_transfer_destination"
+DETAIL:  Failing row contains (67246, NVTEST000000000001  , 1, 2, 0123456789, 044, 100.00, 0.00, null, pending, null, 2026-11-04 01:15:13.371279-05, null, null).
+--- 7. Cannot transfer to yourself
+psql:Fakiyesi_Vincent_ConstraintTests.sql:33: ERROR:  new row for relation "transfers" violates check constraint "chk_not_self_transfer"
+DETAIL:  Failing row contains (67247, NVTEST000000000002  , 1, 1, null, null, 100.00, 0.00, null, pending, null, 2026-11-04 01:15:13.37177-05, null, null).
+--- 8. Transfer amount must be positive
+psql:Fakiyesi_Vincent_ConstraintTests.sql:37: ERROR:  new row for relation "transfers" violates check constraint "transfers_amount_check"
+DETAIL:  Failing row contains (67248, NVTEST000000000003  , 1, 2, null, null, -500.00, 0.00, null, pending, null, 2026-11-04 01:15:13.371978-05, null, null).
+--- 9. Ledger rows cannot be edited (trigger)
+psql:Fakiyesi_Vincent_ConstraintTests.sql:40: ERROR:  Ledger rows are immutable. Post a reversal instead.
+CONTEXT:  PL/pgSQL function block_ledger_change() line 3 at RAISE
+--- 10. Ledger rows cannot be deleted (trigger)
+psql:Fakiyesi_Vincent_ConstraintTests.sql:43: ERROR:  Ledger rows are immutable. Post a reversal instead.
+CONTEXT:  PL/pgSQL function block_ledger_change() line 3 at RAISE
+--- 11. Invalid txn_type rejected
+psql:Fakiyesi_Vincent_ConstraintTests.sql:47: ERROR:  new row for relation "transactions" violates check constraint "transactions_txn_type_check"
+DETAIL:  Failing row contains (242532, 1, null, bribe, DR, 100.00, 0.00, app, null, 2026-11-04 01:15:13.373562-05).
+
+=== Reconciliation: cached balance vs last ledger balance_after ===
+ accounts_checked | matching | mismatched 
+------------------+----------+------------
+             3719 |     3719 |          0
+(1 row)
+
+=== Ledger self-consistency: sum of CR minus DR equals balance ===
+ accounts_with_ledger | consistent 
+----------------------+------------
+                 3719 |       3719
+(1 row)
+

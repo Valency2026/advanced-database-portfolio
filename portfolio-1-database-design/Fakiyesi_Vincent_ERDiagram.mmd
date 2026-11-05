@@ -1,0 +1,102 @@
+erDiagram
+    CUSTOMERS ||--o{ ACCOUNTS : "owns"
+    CUSTOMERS ||--o{ BENEFICIARIES : "saves"
+    CUSTOMERS ||--o{ KYC_DOCUMENTS : "submits"
+    ACCOUNTS ||--o{ TRANSACTIONS : "has ledger entries"
+    ACCOUNTS ||--o{ TRANSFERS : "is source of"
+    ACCOUNTS |o--o{ TRANSFERS : "is destination of"
+    TRANSFERS ||--o{ TRANSACTIONS : "produces"
+    BANKS ||--o{ BENEFICIARIES : "holds account at"
+    BANKS |o--o{ TRANSFERS : "external destination"
+    STAFF |o--o{ KYC_DOCUMENTS : "reviews"
+    STAFF |o--o{ TRANSFERS : "reverses"
+    STAFF |o--o{ AUDIT_LOG : "acts in"
+
+    CUSTOMERS {
+        bigint customer_id PK
+        varchar full_name
+        varchar phone UK
+        varchar email UK
+        date date_of_birth
+        varchar state_of_residence
+        smallint kyc_tier
+        varchar status
+        timestamptz created_at
+    }
+    ACCOUNTS {
+        bigint account_id PK
+        bigint customer_id FK
+        char account_number UK
+        varchar account_type
+        char currency
+        numeric balance
+        varchar status
+        timestamptz opened_at
+    }
+    TRANSFERS {
+        bigint transfer_id PK
+        char reference UK
+        bigint source_account_id FK
+        bigint destination_account_id FK
+        char external_account_number
+        char external_bank_code FK
+        numeric amount
+        numeric fee
+        varchar narration
+        varchar status
+        varchar failure_reason
+        timestamptz initiated_at
+        timestamptz completed_at
+        int reversed_by_staff_id FK
+    }
+    TRANSACTIONS {
+        bigint transaction_id PK
+        bigint account_id FK
+        bigint transfer_id FK
+        varchar txn_type
+        char direction
+        numeric amount
+        numeric balance_after
+        varchar channel
+        varchar description
+        timestamptz created_at
+    }
+    BENEFICIARIES {
+        bigint beneficiary_id PK
+        bigint customer_id FK
+        varchar alias
+        char account_number
+        char bank_code FK
+        timestamptz added_at
+    }
+    BANKS {
+        char bank_code PK
+        varchar bank_name UK
+    }
+    KYC_DOCUMENTS {
+        bigint kyc_id PK
+        bigint customer_id FK
+        varchar document_type
+        varchar document_number_masked
+        varchar status
+        timestamptz submitted_at
+        timestamptz reviewed_at
+        int reviewed_by_staff_id FK
+    }
+    STAFF {
+        int staff_id PK
+        varchar full_name
+        varchar email UK
+        varchar role
+        boolean is_active
+    }
+    AUDIT_LOG {
+        bigint log_id PK
+        varchar actor_type
+        bigint actor_id
+        varchar action
+        varchar entity
+        bigint entity_id
+        jsonb details
+        timestamptz logged_at
+    }

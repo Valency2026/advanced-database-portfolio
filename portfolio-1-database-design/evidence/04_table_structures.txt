@@ -1,0 +1,76 @@
+SET
+             List of relations
+ Schema |     Name      | Type  |  Owner   
+--------+---------------+-------+----------
+ vault  | accounts      | table | postgres
+ vault  | audit_log     | table | postgres
+ vault  | banks         | table | postgres
+ vault  | beneficiaries | table | postgres
+ vault  | customers     | table | postgres
+ vault  | kyc_documents | table | postgres
+ vault  | staff         | table | postgres
+ vault  | transactions  | table | postgres
+ vault  | transfers     | table | postgres
+(9 rows)
+
+                                               Table "vault.transactions"
+     Column     |           Type           | Collation | Nullable |                       Default                        
+----------------+--------------------------+-----------+----------+------------------------------------------------------
+ transaction_id | bigint                   |           | not null | nextval('transactions_transaction_id_seq'::regclass)
+ account_id     | bigint                   |           | not null | 
+ transfer_id    | bigint                   |           |          | 
+ txn_type       | character varying(12)    |           | not null | 
+ direction      | character(2)             |           | not null | 
+ amount         | numeric(18,2)            |           | not null | 
+ balance_after  | numeric(18,2)            |           | not null | 
+ channel        | character varying(10)    |           | not null | 'app'::character varying
+ description    | character varying(140)   |           |          | 
+ created_at     | timestamp with time zone |           | not null | now()
+Indexes:
+    "transactions_pkey" PRIMARY KEY, btree (transaction_id)
+Check constraints:
+    "transactions_amount_check" CHECK (amount > 0::numeric)
+    "transactions_balance_after_check" CHECK (balance_after >= 0::numeric)
+    "transactions_channel_check" CHECK (channel::text = ANY (ARRAY['app'::character varying, 'ussd'::character varying, 'web'::character varying, 'api'::character varying, 'system'::character varying]::text[]))
+    "transactions_direction_check" CHECK (direction = ANY (ARRAY['DR'::bpchar, 'CR'::bpchar]))
+    "transactions_txn_type_check" CHECK (txn_type::text = ANY (ARRAY['deposit'::character varying, 'withdrawal'::character varying, 'transfer_in'::character varying, 'transfer_out'::character varying, 'fee'::character varying, 'reversal'::character varying]::text[]))
+Foreign-key constraints:
+    "transactions_account_id_fkey" FOREIGN KEY (account_id) REFERENCES accounts(account_id)
+    "transactions_transfer_id_fkey" FOREIGN KEY (transfer_id) REFERENCES transfers(transfer_id)
+Triggers:
+    trg_transactions_immutable BEFORE DELETE OR UPDATE ON transactions FOR EACH ROW EXECUTE FUNCTION block_ledger_change()
+
+                                                  Table "vault.transfers"
+         Column          |           Type           | Collation | Nullable |                    Default                     
+-------------------------+--------------------------+-----------+----------+------------------------------------------------
+ transfer_id             | bigint                   |           | not null | nextval('transfers_transfer_id_seq'::regclass)
+ reference               | character(20)            |           | not null | 
+ source_account_id       | bigint                   |           | not null | 
+ destination_account_id  | bigint                   |           |          | 
+ external_account_number | character(10)            |           |          | 
+ external_bank_code      | character(3)             |           |          | 
+ amount                  | numeric(18,2)            |           | not null | 
+ fee                     | numeric(18,2)            |           | not null | 0
+ narration               | character varying(140)   |           |          | 
+ status                  | character varying(10)    |           | not null | 'pending'::character varying
+ failure_reason          | character varying(200)   |           |          | 
+ initiated_at            | timestamp with time zone |           | not null | now()
+ completed_at            | timestamp with time zone |           |          | 
+ reversed_by_staff_id    | integer                  |           |          | 
+Indexes:
+    "transfers_pkey" PRIMARY KEY, btree (transfer_id)
+    "transfers_reference_key" UNIQUE CONSTRAINT, btree (reference)
+Check constraints:
+    "chk_not_self_transfer" CHECK (source_account_id <> destination_account_id)
+    "chk_transfer_destination" CHECK (destination_account_id IS NOT NULL AND external_account_number IS NULL AND external_bank_code IS NULL OR destination_account_id IS NULL AND external_account_number IS NOT NULL AND external_bank_code IS NOT NULL)
+    "transfers_amount_check" CHECK (amount > 0::numeric)
+    "transfers_fee_check" CHECK (fee >= 0::numeric)
+    "transfers_status_check" CHECK (status::text = ANY (ARRAY['pending'::character varying, 'completed'::character varying, 'failed'::character varying, 'reversed'::character varying]::text[]))
+Foreign-key constraints:
+    "transfers_destination_account_id_fkey" FOREIGN KEY (destination_account_id) REFERENCES accounts(account_id)
+    "transfers_external_bank_code_fkey" FOREIGN KEY (external_bank_code) REFERENCES banks(bank_code)
+    "transfers_reversed_by_staff_id_fkey" FOREIGN KEY (reversed_by_staff_id) REFERENCES staff(staff_id)
+    "transfers_source_account_id_fkey" FOREIGN KEY (source_account_id) REFERENCES accounts(account_id)
+Referenced by:
+    TABLE "transactions" CONSTRAINT "transactions_transfer_id_fkey" FOREIGN KEY (transfer_id) REFERENCES transfers(transfer_id)
+
