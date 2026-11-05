@@ -1,0 +1,93 @@
+
+==============================================================================
+DEMO 1: LOST UPDATE (naive read-then-write)
+==============================================================================
+Account 30 starts at 10,000. Session A withdraws 3,000, Session B withdraws 4,000.
+Correct final balance: 3,000.
+
+[    14.0 ms] Session A BEGIN
+[    14.9 ms] Session A read balance = 10000.00
+[    65.2 ms] Session B BEGIN
+[    66.4 ms] Session B read balance = 10000.00
+[   267.9 ms] Session B UPDATE balance = 10000.00 - 4000 = 6000.00
+[   269.9 ms] Session B COMMIT
+[   269.9 ms] Session A UPDATE balance = 10000.00 - 3000 = 7000.00
+[   270.8 ms] Session A COMMIT
+
+Final balance: 7000.00  ->  WRONG - a withdrawal was LOST (3000.00 deducted instead of 7,000)
+
+==============================================================================
+DEMO 2: SAME SCENARIO WITH SELECT ... FOR UPDATE
+==============================================================================
+Account 30 starts at 10,000. Session A withdraws 3,000, Session B withdraws 4,000.
+Correct final balance: 3,000.
+
+[   290.5 ms] Session A BEGIN
+[   291.4 ms] Session A read balance = 10000.00  (row is now locked)
+[   341.8 ms] Session B BEGIN
+[   492.7 ms] Session A UPDATE balance = 10000.00 - 3000 = 7000.00
+[   493.6 ms] Session A COMMIT
+[   494.0 ms] Session B read balance = 7000.00  (row is now locked)
+[   695.4 ms] Session B UPDATE balance = 7000.00 - 4000 = 3000.00
+[   696.4 ms] Session B COMMIT
+
+Final balance: 3000.00  ->  CORRECT
+
+==============================================================================
+DEMO 3: ISOLATION LEVEL READ COMMITTED
+==============================================================================
+Session A reads account 40 twice inside one transaction.
+Between the two reads, Session B deposits 1,000 and commits.
+
+[   713.1 ms] Session A BEGIN (READ COMMITTED); first read  = 5000.00
+[   717.5 ms] Session B deposited 1,000 and COMMITTED
+[   717.7 ms] Session A second read = 6000.00
+
+-> Value changed from 5000.00 to 6000.00 inside one transaction: a NON-REPEATABLE READ,
+   which READ COMMITTED allows. Fine for a dashboard, dangerous for a balance check.
+
+==============================================================================
+DEMO 3: ISOLATION LEVEL REPEATABLE READ
+==============================================================================
+Session A reads account 40 twice inside one transaction.
+Between the two reads, Session B deposits 1,000 and commits.
+
+[   727.0 ms] Session A BEGIN (REPEATABLE READ); first read  = 5000.00
+[   731.4 ms] Session B deposited 1,000 and COMMITTED
+[   731.6 ms] Session A second read = 5000.00
+
+-> Same value both times: REPEATABLE READ gives a consistent snapshot (no non-repeatable read).
+
+==============================================================================
+DEMO 4: DEADLOCK - Session A locks 50 then 60, Session B locks 60 then 50
+==============================================================================
+[   751.2 ms] Session A locked account 50
+[   751.7 ms] Session B locked account 60
+[  1051.5 ms] Session A waiting for account 60 ...
+[  1051.8 ms] Session B waiting for account 50 ...
+[  2052.5 ms] Session A ERROR: deadlock detected
+[  2052.8 ms] Session B locked account 50
+[  2052.9 ms] Session A ROLLBACK (PostgreSQL chose this session as the victim)
+[  2054.5 ms] Session B COMMIT
+
+Outcome: {'Session A': 'deadlock victim', 'Session B': 'committed'}
+PostgreSQL's deadlock detector (deadlock_timeout = 1 s) broke the cycle by aborting one session.
+
+==============================================================================
+DEMO 5: SAME PATTERN THROUGH transfer_funds() - ordered locking, no deadlock
+==============================================================================
+Session A: transfer 50 -> 60.  Session B: transfer 60 -> 50.  Both at the same moment, 50 times each.
+
+Deadlock errors: 0   other errors: 0
+Balances: 50 = 9500.00, 60 = 9500.00  (each sent 5,000 + 500 fees and received 5,000 -> 9,500 each)
+
+==============================================================================
+DEMO 6: STRESS TEST - 16 threads x 50 random transfers through transfer_funds()
+==============================================================================
+Completed: 794   insufficient funds: 0   daily-limit: 6   other errors: 0   time: 0.43s  (1827 transfers/s)
+Total money in system before: 1120336285.36   after: 1120328345.36   difference: 7940.00 (= fees collected, expected 7940)
+Ledger rows added: 2382 (expected 2382)
+Accounts with negative balance: 0
+Accounts whose balance disagrees with their ledger: 0 of 3719
+
+VERDICT: ALL CONSISTENT

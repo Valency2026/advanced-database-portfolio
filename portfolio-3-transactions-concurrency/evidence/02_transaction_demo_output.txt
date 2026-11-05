@@ -1,0 +1,139 @@
+SET
+DO
+=== Starting balances ===
+ account_id |  balance  
+------------+-----------
+         10 | 100000.00
+         20 |   5000.00
+(2 rows)
+
+
+=== DEMO 1: successful transfer -> COMMIT ===
+BEGIN
+psql:Fakiyesi_Vincent_TransactionDemo.sql:33: ERROR:  Daily limit of 50000.00 exceeded for KYC tier 1 (already sent 26000.00 today)
+CONTEXT:  PL/pgSQL function transfer_funds(bigint,bigint,numeric,character varying,character varying) line 51 at RAISE
+psql:Fakiyesi_Vincent_TransactionDemo.sql:34: ERROR:  current transaction is aborted, commands ignored until end of transaction block
+ROLLBACK
+After COMMIT (10 should be 74,990 = 100,000 - 25,000 - 10 fee; 20 should be 30,000):
+ account_id |  balance  
+------------+-----------
+         10 | 100000.00
+         20 |   5000.00
+(2 rows)
+
+
+=== DEMO 2: manual ROLLBACK - changes vanish ===
+BEGIN
+UPDATE 1
+Inside the transaction, balance of 10 looks reduced:
+ account_id | balance  
+------------+----------
+         10 | 99000.00
+(1 row)
+
+ROLLBACK
+After ROLLBACK, balance of 10 is back to 74,990:
+ account_id |  balance  
+------------+-----------
+         10 | 100000.00
+(1 row)
+
+
+=== DEMO 3: insufficient funds -> exception -> automatic rollback ===
+Account 20 has 30,000; try to send 50,000
+BEGIN
+psql:Fakiyesi_Vincent_TransactionDemo.sql:55: ERROR:  Insufficient funds: balance 5000.00, need 50010.00
+CONTEXT:  PL/pgSQL function transfer_funds(bigint,bigint,numeric,character varying,character varying) line 57 at RAISE
+ROLLBACK
+Balances unchanged, and no half-written ledger rows:
+ account_id |  balance  
+------------+-----------
+         10 | 100000.00
+         20 |   5000.00
+(2 rows)
+
+ ledger_rows_for_failed_transfer 
+---------------------------------
+                               0
+(1 row)
+
+
+=== DEMO 4: SAVEPOINT - partial rollback inside one transaction ===
+BEGIN
+         ref1         
+----------------------
+ NV202611040000067255
+(1 row)
+
+SAVEPOINT
+         ref2         
+----------------------
+ NV202611040000067257
+(1 row)
+
+Both gifts applied (10 = 74,990 - 1,010 - 2,010 = 71,970):
+ account_id | balance  
+------------+----------
+         10 | 96980.00
+         20 |  8000.00
+(2 rows)
+
+ROLLBACK
+Second gift undone, first kept (10 = 73,980):
+ account_id | balance  
+------------+----------
+         10 | 98990.00
+         20 |  6000.00
+(2 rows)
+
+COMMIT
+
+=== DEMO 5: reversal of a completed transfer by support staff ===
+Reversing: NV202611040000067249
+psql:Fakiyesi_Vincent_TransactionDemo.sql:82: ERROR:  Only completed transfers can be reversed (status is reversed)
+CONTEXT:  PL/pgSQL function reverse_transfer(character,integer,character varying) line 9 at RAISE
+      reference       |  status  |         failure_reason         | reversed_by_staff_id 
+----------------------+----------+--------------------------------+----------------------
+ NV202611040000067249 | reversed | Customer sent to wrong account |                    2
+(1 row)
+
+Sender gets amount + fee back; receiver debited:
+ account_id | balance  
+------------+----------
+         10 | 98990.00
+         20 |  6000.00
+(2 rows)
+
+Ledger shows the original legs AND the reversal legs (nothing deleted):
+ account_id |   txn_type   | direction |  amount  | balance_after 
+------------+--------------+-----------+----------+---------------
+         10 | transfer_out | DR        | 25000.00 |      75000.00
+         10 | fee          | DR        |    10.00 |      74990.00
+         20 | transfer_in  | CR        | 25000.00 |      30000.00
+         20 | reversal     | DR        | 25000.00 |       6000.00
+         10 | reversal     | CR        | 25010.00 |      98990.00
+(5 rows)
+
+
+=== DEMO 6: reversing twice is refused ===
+psql:Fakiyesi_Vincent_TransactionDemo.sql:94: ERROR:  Only completed transfers can be reversed (status is reversed)
+CONTEXT:  PL/pgSQL function reverse_transfer(character,integer,character varying) line 9 at RAISE
+
+=== DEMO 7: daily KYC limit enforced inside the transaction ===
+Account 10 belongs to a tier-1 customer? ->
+ account_id | kyc_tier 
+------------+----------
+         10 |        1
+(1 row)
+
+UPDATE 1
+psql:Fakiyesi_Vincent_TransactionDemo.sql:102: ERROR:  Daily limit of 50000.00 exceeded for KYC tier 1 (already sent 27000.00 today)
+CONTEXT:  PL/pgSQL function transfer_funds(bigint,bigint,numeric,character varying,character varying) line 51 at RAISE
+(above should fail: 26,000 already sent today + 49,000 > 50,000 tier-1 limit)
+
+=== Final consistency check: every balance still matches its ledger ===
+ accounts | consistent 
+----------+------------
+     3719 |       3719
+(1 row)
+
